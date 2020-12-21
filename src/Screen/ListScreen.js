@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { List, Text } from 'native-base';
 import { Alert, View, ActivityIndicator, ScrollView, StyleSheet, Dimensions, Platform, ToastAndroid } from 'react-native';
 import AsyncStorage from '@react-native-community/async-storage';
+import NetInfo from "@react-native-community/netinfo";
 
 import DataItem from '../components/dataItem'
 import Modal from '../components/modal';
@@ -24,6 +25,11 @@ const ListThumbnail = () => {
 
   const initialMapState = globalTags
   const [state, setState] = useState(initialMapState);
+  const [netInfo, setNetInfo] = useState('');
+  const [status, setStatus] = useState('');
+
+  // console.log('netInfo', netInfo)
+  // console.log('status', status)
 
   const handleItemDataOnPress = (articleData) => {
     setModalVisible({ isSetModalVisible: true })
@@ -37,19 +43,40 @@ const ListThumbnail = () => {
 
 
   useEffect(() => {
-    getArticles(isTag).then(data => {
-      setLoading({ isLoading: false })
-      storeData(data)
-      // setData(data)
-      retrieveData()
 
-    }, error => {
-      console.log('error', error)
-      retrieveData()
-      // Alert.alert('Error', 'Please Check your Internet Connection')
-      ToastAndroid.show("Please Check your Internet Connection !", ToastAndroid.LONG, ToastAndroid.BOTTOM);
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setNetInfo(
+        `Connection type: ${state.type}
+        Is connected?: ${state.isConnected}}`,
+      );
 
-    })
+      if (state.isConnected) {
+        // Alert.alert("You are online!");
+        setStatus('online')
+      } else {
+        // Alert.alert("You are offline!");
+        setStatus('offline')
+      }
+    });
+
+    if (status === 'offline') {
+      // console.log('get articles offline')
+      retrieveData()
+    } else {
+      // console.log('get articles online')
+      getArticles(isTag).then(data => {
+        setLoading({ isLoading: false })
+        storeData(data)
+        // setData(data)
+        retrieveData()
+
+      }, error => {
+        console.log('error', error)
+        retrieveData()
+        ToastAndroid.show("Please Check your Internet Connection !", ToastAndroid.LONG, ToastAndroid.BOTTOM);
+
+      })
+    }
   }, [isTag])
 
   const storeData = async (value) => {
@@ -71,7 +98,7 @@ const ListThumbnail = () => {
           return item.section === newTag
         });
 
-        console.log('filteredData', filteredData);
+        // console.log('filteredData', filteredData.length);
         if (Array.isArray(filteredData) && filteredData.length) {
           setData(filteredData)
         } else {
@@ -88,7 +115,7 @@ const ListThumbnail = () => {
     setTag(tag)
   }
 
-  console.log('data', data)
+  // console.log('data', data.length)
 
   let renderList = !isLoading ? (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
